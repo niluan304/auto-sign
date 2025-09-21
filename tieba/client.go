@@ -5,6 +5,7 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -17,11 +18,10 @@ import (
 )
 
 // API URLs
-// 不适用 https，因为 https 会自动跳转到 http.
 const (
-	urlTbs  = "http://tieba.baidu.com/dc/common/tbs"
-	urlLike = "http://c.tieba.baidu.com/c/f/forum/like"
-	urlSign = "http://c.tieba.baidu.com/c/c/forum/sign"
+	urlTbs  = "https://tieba.baidu.com/dc/common/tbs"
+	urlLike = "https://c.tieba.baidu.com/c/f/forum/like"
+	urlSign = "https://c.tieba.baidu.com/c/c/forum/sign"
 )
 
 type Client struct {
@@ -45,7 +45,7 @@ type Option func(c *Client)
 
 func NewClient(bduss string, opts ...Option) (*Client, error) {
 	if bduss == "" {
-		return nil, fmt.Errorf("bduss is required")
+		return nil, errors.New("bduss is required")
 	}
 
 	client := &Client{
@@ -102,18 +102,15 @@ func (c *Client) doWithJSON(req *http.Request, point any) error {
 	}
 
 	// 错误检查
-	var check struct {
-		ErrorCode string `json:"error_code"`
-		ErrorMsg  string `json:"error_msg"`
-	}
+	var check Error
 
 	err = json.Unmarshal(body, &check)
 	if err != nil {
 		return fmt.Errorf("json decode check %s , err: %w", req.Host, err)
 	}
 
-	if check.ErrorMsg != "" {
-		return fmt.Errorf("check error: %s", check)
+	if check.Msg != "" {
+		return &check
 	}
 
 	err = json.Unmarshal(body, point)
@@ -134,6 +131,7 @@ func (c *Client) Tbs(ctx context.Context, request *TbsRequest) (*TbsResponse, er
 	}
 
 	var response TbsResponse
+
 	err = c.doWithJSON(r, &response)
 	if err != nil {
 		return nil, err
@@ -148,7 +146,7 @@ func (c *Client) Favorite(ctx context.Context, request *FavoriteRequest) (*Favor
 	c.log.InfoContext(ctx, "Favorite Start")
 	defer c.log.InfoContext(ctx, "Favorite Finished")
 
-	request.PageNo = 0
+	request.pageNo = 0
 
 	response := FavoriteResponse{
 		HasMore: "1",
@@ -158,12 +156,12 @@ func (c *Client) Favorite(ctx context.Context, request *FavoriteRequest) (*Favor
 	for response.HasMore == "1" {
 		time.Sleep(time.Second * 3)
 
-		request.PageNo++
-		request.Timestamp = Timestamp()
+		request.pageNo++
 
 		res, err := c.favorite(ctx, request)
 		if err != nil {
 			c.log.ErrorContext(ctx, "Favorite", "HasMore Request", request, "err", err)
+
 			break
 		}
 
@@ -193,9 +191,9 @@ func (c *Client) favorite(ctx context.Context, request *FavoriteRequest) (*Favor
 		"BDUSS": c.bduss,
 
 		"page_size": Itoa(request.PageSize),
-		"page_no":   Itoa(request.PageNo),
+		"page_no":   Itoa(request.pageNo),
 
-		"timestamp": request.Timestamp,
+		"timestamp": Timestamp(),
 	}
 
 	r, err := http.NewRequestWithContext(ctx, http.MethodPost, urlLike, c.urlEncode(data))
@@ -204,6 +202,7 @@ func (c *Client) favorite(ctx context.Context, request *FavoriteRequest) (*Favor
 	}
 
 	var response FavoriteResponse
+
 	err = c.doWithJSON(r, &response)
 	if err != nil {
 		return nil, err
@@ -240,8 +239,14 @@ func (c *Client) Sign(ctx context.Context, request *SignRequest) (*SignResponse,
 	}
 
 	var response SignResponse
+
 	err = c.doWithJSON(r, &response)
 	if err != nil {
+		var check *Error
+		if errors.As(err, &check) && check.Code == codeSignRepeat {
+			return &response, nil
+		}
+
 		return nil, err
 	}
 
@@ -260,6 +265,7 @@ func (c *Client) urlEncode(data map[string]string) io.Reader {
 	// 3. 生成 md5签名
 	// 4. 转换为 表单数据
 	values := url.Values{}
+
 	for _, k := range slices.Sorted(maps.Keys(data)) {
 		v := data[k]
 		x += k + "=" + v

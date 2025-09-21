@@ -3,7 +3,6 @@ package tieba
 import (
 	"context"
 	"errors"
-	"fmt"
 	"os"
 	"testing"
 )
@@ -13,6 +12,7 @@ func TestClient_Tab(t *testing.T) {
 		ctx     context.Context
 		request *TbsRequest
 	}
+
 	tests := []struct {
 		name    string
 		bduss   string
@@ -24,7 +24,7 @@ func TestClient_Tab(t *testing.T) {
 			name:  "ok",
 			bduss: os.Getenv("BDUSS"),
 			args: args{
-				ctx:     context.Background(),
+				ctx:     t.Context(),
 				request: &TbsRequest{},
 			},
 			wantErr: false,
@@ -42,12 +42,14 @@ func TestClient_Tab(t *testing.T) {
 			s, err := NewClient(tt.bduss)
 			if err != nil {
 				t.Errorf("NewClient() error = %v", err)
+
 				return
 			}
 
 			got, err := s.Tbs(tt.args.ctx, tt.args.request)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Tbs() error = %v, wantErr %v", err, tt.wantErr)
+
 				return
 			}
 
@@ -63,6 +65,7 @@ func TestClient_Favorite(t *testing.T) {
 		ctx     context.Context
 		request *FavoriteRequest
 	}
+
 	tests := []struct {
 		name    string
 		bduss   string
@@ -74,17 +77,16 @@ func TestClient_Favorite(t *testing.T) {
 			name:  "ok",
 			bduss: os.Getenv("BDUSS"),
 			args: args{
-				ctx: context.Background(),
+				ctx: t.Context(),
 				request: &FavoriteRequest{
-					PageNo:    1,
-					PageSize:  100,
-					Timestamp: Timestamp(),
+					pageNo:   1,
+					PageSize: 100,
 				},
 			},
 			wantErr: false,
 			check: func(res *FavoriteResponse) error {
 				if len(res.ForumList.NonGconForum) == 0 && len(res.ForumList.GconForum) == 0 {
-					return fmt.Errorf("empty")
+					return errors.New("empty")
 				}
 
 				return nil
@@ -94,17 +96,16 @@ func TestClient_Favorite(t *testing.T) {
 			name:  "page",
 			bduss: os.Getenv("BDUSS"),
 			args: args{
-				ctx: context.Background(),
+				ctx: t.Context(),
 				request: &FavoriteRequest{
-					PageNo:    1,
-					PageSize:  1,
-					Timestamp: Timestamp(),
+					pageNo:   1,
+					PageSize: 1,
 				},
 			},
 			wantErr: false,
 			check: func(res *FavoriteResponse) error {
 				if len(res.ForumList.NonGconForum) == 0 && len(res.ForumList.GconForum) == 0 {
-					return fmt.Errorf("empty")
+					return errors.New("empty")
 				}
 
 				return nil
@@ -117,12 +118,14 @@ func TestClient_Favorite(t *testing.T) {
 			s, err := NewClient(tt.bduss)
 			if err != nil {
 				t.Errorf("NewClient() error = %v", err)
+
 				return
 			}
 
 			got, err := s.Favorite(tt.args.ctx, tt.args.request)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Favorite() error = %v, wantErr %v", err, tt.wantErr)
+
 				return
 			}
 
@@ -138,6 +141,7 @@ func TestClient_Sign(t *testing.T) {
 		ctx     context.Context
 		request *SignRequest
 	}
+
 	tests := []struct {
 		name    string
 		bduss   string
@@ -149,7 +153,7 @@ func TestClient_Sign(t *testing.T) {
 			name:  "os.Getenv",
 			bduss: os.Getenv("BDUSS"),
 			args: args{
-				ctx: context.Background(),
+				ctx: t.Context(),
 				request: &SignRequest{
 					Tbs: "",
 					Fid: os.Getenv("fid"),
@@ -167,6 +171,7 @@ func TestClient_Sign(t *testing.T) {
 			s, err := NewClient(tt.bduss)
 			if err != nil {
 				t.Errorf("NewClient() error = %v", err)
+
 				return
 			}
 
@@ -175,6 +180,7 @@ func TestClient_Sign(t *testing.T) {
 			tab, err := s.Tbs(ctx, &TbsRequest{})
 			if err != nil {
 				t.Errorf("Tbs() error = %v", err)
+
 				return
 			}
 
@@ -183,6 +189,7 @@ func TestClient_Sign(t *testing.T) {
 			got, err := s.Sign(ctx, tt.args.request)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Sign() error = %v, wantErr %v", err, tt.wantErr)
+
 				return
 			}
 

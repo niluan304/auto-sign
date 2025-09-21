@@ -50,13 +50,10 @@ type (
 		// POST 请求
 
 		// 从 1 开始
-		PageNo int64 `json:"page_no"`
+		pageNo int64
 
 		// 每页数量，应当设置 100-200
 		PageSize int64 `json:"page_size"`
-
-		// 时间戳，秒
-		Timestamp string `json:"timestamp"`
 	}
 
 	FavoriteResponse struct {
