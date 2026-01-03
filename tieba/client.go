@@ -179,24 +179,11 @@ func (c *Client) Favorite(ctx context.Context, request *FavoriteRequest) (*Favor
 
 func (c *Client) favorite(ctx context.Context, request *FavoriteRequest) (*FavoriteResponse, error) {
 	data := map[string]string{
-		"_client_type":    "2",
-		"_client_id":      "wappc_1534235498291_488",
-		"_client_version": "9.7.8.0",
-		"_phone_imei":     "000000000000000",
-		"from":            "1008621y",
-		"model":           "MI+5",
-		"net_type":        "1",
-		"vcode_tag":       "11",
-
-		"BDUSS": c.bduss,
-
 		"page_size": Itoa(request.PageSize),
 		"page_no":   Itoa(request.pageNo),
-
-		"timestamp": Timestamp(),
 	}
 
-	r, err := http.NewRequestWithContext(ctx, http.MethodPost, urlLike, c.urlEncode(data))
+	r, err := http.NewRequestWithContext(ctx, http.MethodPost, urlLike, c.encode(data))
 	if err != nil {
 		return nil, err
 	}
@@ -215,25 +202,12 @@ func (c *Client) favorite(ctx context.Context, request *FavoriteRequest) (*Favor
 // 贴吧签到.
 func (c *Client) Sign(ctx context.Context, request *SignRequest) (*SignResponse, error) {
 	data := map[string]string{
-		"_client_type":    "2",
-		"_client_id":      "wappc_1534235498291_488",
-		"_client_version": "9.7.8.0",
-		"_phone_imei":     "000000000000000",
-		"from":            "1008621y",
-		"model":           "MI+5",
-		"net_type":        "1",
-		"vcode_tag":       "11",
-
-		"BDUSS": c.bduss,
-
 		"tbs": request.Tbs,
 		"fid": request.Fid,
 		"kw":  request.KW,
-
-		"timestamp": Timestamp(),
 	}
 
-	r, err := http.NewRequestWithContext(ctx, http.MethodPost, urlSign, c.urlEncode(data))
+	r, err := http.NewRequestWithContext(ctx, http.MethodPost, urlSign, c.encode(data))
 	if err != nil {
 		return nil, err
 	}
@@ -257,22 +231,43 @@ func (c *Client) Sign(ctx context.Context, request *SignRequest) (*SignResponse,
 }
 
 // 根据规则，编码数据.
-func (c *Client) urlEncode(data map[string]string) io.Reader {
-	x := ""
+func (c *Client) encode(src map[string]string) io.Reader {
+	data := map[string]string{
+		// const (
+		//	// iPhone 苹果客户端
+		//	iPhone ClientType = 1
+		//	// Android 安卓客户端
+		//	Android ClientType = 2
+		//	// WP WindowsPhone客户端
+		//	WP ClientType = 3
+		//	// W8 Windows 8客户端
+		//	W8 ClientType = 4
+		// )
+		"_client_type":    "2",
+		"_client_id":      "wappc_1534235498291_488",
+		"_client_version": "9.7.8.0",
+		"_phone_imei":     "000000000000000",
+		"from":            "1008621y",
+		"model":           "MI+5",
+		"net_type":        "1",
+		"vcode_tag":       "11",
 
-	// 1. 字段 key 排序
-	// 2. 拼接 k1=v1k2=v2...
-	// 3. 生成 md5签名
-	// 4. 转换为 表单数据
-	values := url.Values{}
+		"BDUSS": c.bduss,
 
+		"timestamp": Itoa(time.Now().Unix()),
+	}
+
+	maps.Insert(data, maps.All(src))
+
+	values := make(url.Values, len(data))
+	buf := &strings.Builder{}
 	for _, k := range slices.Sorted(maps.Keys(data)) {
 		v := data[k]
-		x += k + "=" + v
+		buf.WriteString(fmt.Sprintf("%s=%s", k, v))
 		values.Add(k, v)
 	}
 
-	hash := md5.Sum([]byte(x + "tiebaclient!!!"))
+	hash := md5.Sum([]byte(buf.String() + "tiebaclient!!!"))
 	sign := strings.ToUpper(hex.EncodeToString(hash[:]))
 
 	values.Add("sign", sign)
