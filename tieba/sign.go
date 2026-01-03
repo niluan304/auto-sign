@@ -30,12 +30,6 @@ func Sign(ctx context.Context) error {
 		return err
 	}
 
-	// 获取TBS（Token Bucket System）值，用于后续的签到请求
-	tbs, err := client.Tbs(ctx, &TbsRequest{})
-	if err != nil {
-		return err
-	}
-
 	// 获取用户的关注列表，包括普通吧和高级吧
 	favorite, err := client.Favorite(ctx, &FavoriteRequest{
 		PageSize: 100,
@@ -49,9 +43,8 @@ func Sign(ctx context.Context) error {
 	for _, gcon := range gcons {
 		log.DebugContext(ctx, "sign", "gcon", gcon)
 
-		// 构建签到请求，包含TBS、吧ID和吧名称
+		// 构建签到请求，包含吧ID和吧名称
 		sign, err := client.Sign(ctx, &SignRequest{
-			Tbs: tbs.Tbs,
 			Fid: gcon.Id,
 			KW:  gcon.Name,
 		})
