@@ -50,6 +50,10 @@ func (e *Error) Error() string {
 }
 
 func (e *Error) Code() string {
+	if e.code == "0" {
+		return ""
+	}
+
 	return e.code
 }
 
